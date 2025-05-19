@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  base: './',
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
@@ -16,7 +17,7 @@ export default defineConfig({
         target: 'https://rpc.hyperliquid.xyz',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/rpc-proxy/, '/evm'),
-        secure: false, // Set to true in production if using HTTPS
+        secure: false,
       },
     },
   },
