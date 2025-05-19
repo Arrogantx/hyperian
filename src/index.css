@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pixel-size: 4px;
+}
+
+html, body {
+  background-color: #121212;
+  color: white;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #121212;
+  color: white;
+}
+
+/* Pixel Art Styling */
+@layer components {
+  .pixel-border {
+    @apply border-2 border-white relative;
+    image-rendering: pixelated;
+    box-shadow: 0 0 0 2px #000;
+  }
+
+  .pixel-button {
+    @apply bg-hyper-cyan text-hyper-black font-pixel py-2 px-4 
+      border-2 border-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
+      hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]
+      hover:translate-x-[2px] hover:translate-y-[2px]
+      active:shadow-none active:translate-x-[4px] active:translate-y-[4px]
+      transition-all duration-100 ease-in-out cursor-pointer;
+    image-rendering: pixelated;
+  }
+
+  .pixel-input {
+    @apply bg-hyper-black text-white font-pixel py-2 px-4 
+      border-2 border-hyper-cyan shadow-[inset_2px_2px_0px_0px_rgba(255,255,255,0.2)]
+      focus:shadow-[inset_4px_4px_0px_0px_rgba(255,255,255,0.3)]
+      focus:outline-none transition-all duration-100;
+    image-rendering: pixelated;
+  }
+
+  .pixel-card {
+    @apply bg-hyper-black border-2 border-hyper-cyan p-4 
+      shadow-[4px_4px_0px_0px_rgba(0,255,255,0.5)]
+      hover:shadow-[6px_6px_0px_0px_rgba(0,255,255,0.6)]
+      transition-all duration-200;
+    image-rendering: pixelated;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background-color: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #00FFFF;
+  border: 2px solid #121212;
+  image-rendering: pixelated;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #333;
+  border: 2px solid #121212;
+}
+
+/* Font adjustments */
+.font-pixel {
+  font-family: 'Press Start 2P', cursive, monospace;
+  letter-spacing: 1px;
+  line-height: 1.5;
+}
