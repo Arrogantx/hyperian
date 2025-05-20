@@ -5,7 +5,7 @@
 [build.environment]
   NODE_VERSION = "20"
   VITE_SUPABASE_URL = "https://pdjvxaehqhjvkbzbihvr.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkanZ4YWVocWhqdmtiemJpaHZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY2NzAyNjIsImV4cCI6MjA2MjI0NjI2Mn0.KCIQ9AJgOqTqBxqz86ImWeSnvusB3Pq_wqOjWIT8yJI"
 
 [dev]
   functions = "netlify/functions"

@@ -47,7 +47,7 @@ const Navbar: React.FC = () => {
       <div className="container mx-auto flex justify-between items-center px-4">
         <Link to="/" className="flex items-center gap-2">
           <Zap className="text-hyper-cyan w-6 h-6" />
-          <span className="font-pixel text-hyper-cyan text-lg">HYPERIANS</span>
+          <span className="font-pixel text-hyper-cyan text-lg">HYPERIAN</span>
         </Link>
         
         <div className="hidden md:flex items-center gap-6">

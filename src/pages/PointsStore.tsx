@@ -173,46 +173,52 @@ const PointsStore: React.FC = () => {
             </div>
 
             {/* How It Works Section */}
-            <div className="pixel-card max-w-4xl mx-auto">
-              <h2 className="font-pixel text-lg text-hyper-magenta mb-6">How It Works</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="font-pixel text-sm text-hyper-cyan mb-2">Earning Points</h3>
-                  <ul className="space-y-3">
-                    <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-hyper-cyan flex-shrink-0" />
-                      <span>Stake your Hyperian NFTs to earn points</span>
-                    </li>
-                    <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-hyper-magenta flex-shrink-0" />
-                      <span>Points accumulate every 5 hours while staked</span>
-                    </li>
-                    <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-hyper-yellow flex-shrink-0" />
-                      <span>The more NFTs staked, the more points earned</span>
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="font-pixel text-sm text-hyper-yellow mb-2">Redeeming Points</h3>
-                  <ul className="space-y-3">
-                    <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
-                      <Store className="w-4 h-4 text-hyper-cyan flex-shrink-0" />
-                      <span>Mystery boxes contain exclusive rewards</span>
-                    </li>
-                    <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
-                      <Store className="w-4 h-4 text-hyper-magenta flex-shrink-0" />
-                      <span>New items added regularly</span>
-                    </li>
-                    <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
-                      <Store className="w-4 h-4 text-hyper-yellow flex-shrink-0" />
-                      <span>Special limited-time offers coming soon</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
+           {/* How It Works Section */}
+<div className="pixel-card max-w-4xl mx-auto">
+  <h2 className="font-pixel text-lg text-hyper-magenta mb-6">How It Works</h2>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="space-y-4">
+      <h3 className="font-pixel text-sm text-hyper-cyan mb-2">Earning Points</h3>
+      <ul className="space-y-3">
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-hyper-cyan flex-shrink-0" />
+          <span>Earn points just by holding your Hyperian Genesis NFTs</span>
+        </li>
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-hyper-magenta flex-shrink-0" />
+          <span>Minting new NFTs instantly rewards bonus points</span>
+        </li>
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-hyper-yellow flex-shrink-0" />
+          <span>Get rewarded every 5 hours for active NFT wallets</span>
+        </li>
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Zap className="w-4 h-4 text-hyper-green flex-shrink-0" />
+          <span>Holding more NFTs increases your multiplier bonus</span>
+        </li>
+      </ul>
+    </div>
+
+    <div className="space-y-4">
+      <h3 className="font-pixel text-sm text-hyper-yellow mb-2">Redeeming Points</h3>
+      <ul className="space-y-3">
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Store className="w-4 h-4 text-hyper-cyan flex-shrink-0" />
+          <span>Spend points to unlock randomized Mystery Boxes</span>
+        </li>
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Store className="w-4 h-4 text-hyper-magenta flex-shrink-0" />
+          <span>Boxes include cosmetics, boosts, or rare collectibles</span>
+        </li>
+        <li className="font-pixel text-xs text-gray-300 flex items-center gap-2">
+          <Store className="w-4 h-4 text-hyper-yellow flex-shrink-0" />
+          <span>Special limited-time items will appear during events</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+
           </>
         )}
       </div>

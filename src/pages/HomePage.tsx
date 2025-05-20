@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { useWeb3 } from '../context/Web3Context';
 import { useStaking } from '../context/StakingContext';
@@ -7,7 +7,7 @@ import PixelButton from '../components/ui/PixelButton';
 
 const HomePage: React.FC = () => {
   const { isConnected, connectWallet } = useWeb3();
-  const { 
+  const {
     userNFTs,
     totalPoints,
     weeklyPoints,
@@ -18,30 +18,34 @@ const HomePage: React.FC = () => {
     error
   } = useStaking();
 
+  const [collecting, setCollecting] = useState(false);
+  const [nextClaimAt, setNextClaimAt] = useState<string | null>(null);
+  const [localTotalPoints, setLocalTotalPoints] = useState<number>(totalPoints);
+  const [localWeeklyPoints, setLocalWeeklyPoints] = useState<number>(weeklyPoints);
+
   const heroRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         defaults: { duration: 0.6, ease: 'power2.out' }
       });
-      
+
       gsap.set([titleRef.current, statsRef.current, '.dashboard-card'], {
         opacity: 0,
         y: 20
       });
-      
+
       tl.to(titleRef.current, { opacity: 1, y: 0 })
         .to(statsRef.current, { opacity: 1, y: 0 }, '-=0.3')
-        .to('.dashboard-card', { 
-          opacity: 1, 
+        .to('.dashboard-card', {
+          opacity: 1,
           y: 0,
           stagger: 0.1
         }, '-=0.2');
-      
-      // Pixel animations
+
       gsap.to('.pixel-floater', {
         y: -15,
         duration: 2.5,
@@ -51,7 +55,7 @@ const HomePage: React.FC = () => {
         stagger: 0.2
       });
     });
-    
+
     return () => ctx.revert();
   }, []);
 
@@ -65,25 +69,75 @@ const HomePage: React.FC = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const formatCountdown = (iso: string) => {
+    const diff = new Date(iso).getTime() - Date.now();
+    if (diff <= 0) return 'Now';
+    const hrs = Math.floor(diff / (1000 * 60 * 60));
+    const min = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hrs}h ${min}m`;
+  };
+
+  const collectPoints = async () => {
+    try {
+      setCollecting(true);
+      const address = (window as any).ethereum?.selectedAddress;
+      if (!address) return alert('Wallet not connected');
+
+      const res = await fetch('https://pdjvxaehqhjvkbzbihvr.functions.supabase.co/claim-points', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ wallet: address })
+      });
+
+      const text = await res.text();
+      console.log("Raw response:", text);
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error("Invalid JSON response: " + text);
+      }
+
+      if (result.success) {
+        alert(`You earned ${result.points} points!`);
+        setLocalTotalPoints(result.total_points);
+        setLocalWeeklyPoints(result.weekly_points);
+        setNextClaimAt(result.next_claim_at);
+        localStorage.setItem('nextClaimAt', result.next_claim_at);
+      } else {
+        alert('Failed to collect points.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Error collecting points.');
+    } finally {
+      setCollecting(false);
+    }
+  };
+
   return (
     <div className="pt-20 pb-12">
-      <div 
+      <div
         ref={heroRef}
         className="px-4 py-12 md:py-20 flex flex-col items-center justify-center text-center relative"
       >
         <div className="absolute left-10 top-40 w-4 h-4 bg-hyper-cyan pixel-floater"></div>
         <div className="absolute right-10 top-20 w-6 h-6 bg-hyper-magenta pixel-floater"></div>
         <div className="absolute left-1/4 bottom-10 w-5 h-5 bg-hyper-yellow pixel-floater"></div>
-        
+
         <div className="relative mb-6">
           <Zap size={48} className="text-hyper-cyan animate-pulse" />
         </div>
-        
-        <h1 
+
+        <h1
           ref={titleRef}
           className="font-pixel text-2xl md:text-4xl text-white mb-6 max-w-2xl"
         >
-          <span className="text-hyper-cyan">HYPERIANS</span> GENESIS
+          <span className="text-hyper-cyan">HYPERIAN</span> GENESIS
         </h1>
 
         {!isConnected ? (
@@ -115,7 +169,6 @@ const HomePage: React.FC = () => {
               </div>
             ) : (
               <>
-                {/* Global Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                   <div className="dashboard-card pixel-card">
                     <div className="flex items-start justify-between">
@@ -136,7 +189,7 @@ const HomePage: React.FC = () => {
                       <div>
                         <p className="font-pixel text-xs text-gray-400">Total Points</p>
                         <h3 className="font-pixel text-xl text-hyper-magenta mt-2">
-                          {totalPoints}
+                          {localTotalPoints ?? totalPoints}
                         </h3>
                       </div>
                       <div className="bg-hyper-magenta bg-opacity-20 p-2 rounded">
@@ -150,7 +203,7 @@ const HomePage: React.FC = () => {
                       <div>
                         <p className="font-pixel text-xs text-gray-400">Weekly Points</p>
                         <h3 className="font-pixel text-xl text-hyper-yellow mt-2">
-                          {weeklyPoints}
+                          {localWeeklyPoints ?? weeklyPoints}
                         </h3>
                       </div>
                       <div className="bg-hyper-yellow bg-opacity-20 p-2 rounded">
@@ -162,9 +215,9 @@ const HomePage: React.FC = () => {
                   <div className="dashboard-card pixel-card">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-pixel text-xs text-gray-400">Next Points In</p>
+                        <p className="font-pixel text-xs text-gray-400">Next Claim In</p>
                         <h3 className="font-pixel text-xl text-hyper-green mt-2">
-                          {formatTime(nextRewardIn)}
+                          {nextClaimAt ? formatCountdown(nextClaimAt) : formatTime(nextRewardIn)}
                         </h3>
                       </div>
                       <div className="bg-hyper-green bg-opacity-20 p-2 rounded">
@@ -172,22 +225,40 @@ const HomePage: React.FC = () => {
                       </div>
                     </div>
                     <div className="w-full bg-gray-800 h-2 mt-4">
-                      <div 
-                        className="bg-hyper-green h-full" 
-                        style={{ 
-                          width: `${100 - ((nextRewardIn / (5 * 60 * 60)) * 100)}%` 
+                      <div
+                        className="bg-hyper-green h-full"
+                        style={{
+                          width: `${100 - ((nextRewardIn / (5 * 60 * 60)) * 100)}%`
                         }}
                       ></div>
                     </div>
                   </div>
                 </div>
 
-                {/* NFT Grid */}
+                {userNFTs && userNFTs.length > 0 && (
+                  <div className="my-6 text-center">
+                    <PixelButton
+                      color="green"
+                      onClick={collectPoints}
+                      disabled={collecting}
+                    >
+                      {collecting ? 'Collecting...' : 'Collect Points'}
+                    </PixelButton>
+                  </div>
+                )}
+
                 {userNFTs && userNFTs.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {userNFTs.map((tokenId) => (
                       <div key={tokenId} className="pixel-card p-4">
-                        <div className="aspect-square bg-gray-800 rounded-lg"></div>
+                        <div className="aspect-square bg-gray-800 rounded-lg overflow-hidden">
+                          <img
+                            src="/nfts/unrevealed.gif"
+                            alt={`Hyperian #${tokenId}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
                         <div className="mt-2">
                           <p className="font-pixel text-xs text-gray-400">
                             Hyperian #{tokenId}
@@ -204,7 +275,6 @@ const HomePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Recent Activity */}
                 {recentActivity && recentActivity.length > 0 && (
                   <div className="mt-8">
                     <h2 className="font-pixel text-lg text-hyper-cyan mb-4">Recent Activity</h2>
