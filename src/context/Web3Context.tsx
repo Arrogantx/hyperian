@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ethers } from 'ethers';
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 interface Web3ContextType {
   provider: ethers.BrowserProvider | null;
   address: string | null;
@@ -18,7 +24,7 @@ const Web3Context = createContext<Web3ContextType>({
   isConnected: false,
   connectWallet: async () => {},
   disconnect: () => {},
-  ensName: null
+  ensName: null,
 });
 
 export const useWeb3 = () => useContext(Web3Context);
@@ -34,104 +40,106 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [ensName, setEnsName] = useState<string | null>(null);
 
-  // Check for existing connection on mount
   useEffect(() => {
-    const checkConnection = async () => {
-      if (typeof window !== 'undefined' && window.ethereum) {
+    const initConnection = async () => {
+      if (window.ethereum) {
         try {
           const ethProvider = new ethers.BrowserProvider(window.ethereum);
-          const accounts = await ethProvider.listAccounts();
-          
-          if (accounts.length > 0) {
-            const network = await ethProvider.getNetwork();
-            const account = accounts[0];
-            
-            setProvider(ethProvider);
-            setAddress(account.address);
-            setChainId(Number(network.chainId));
-            setIsConnected(true);
-            
-            try {
-              const ensName = await ethProvider.lookupAddress(account.address);
-              if (ensName) setEnsName(ensName);
-            } catch (error) {
-              console.log("No ENS name found or error looking up ENS");
-            }
+          const signer = await ethProvider.getSigner();
+          const account = await signer.getAddress();
+          const network = await ethProvider.getNetwork();
+
+          setProvider(ethProvider);
+          setAddress(account);
+          setChainId(Number(network.chainId));
+          setIsConnected(true);
+
+          try {
+            const name = await ethProvider.lookupAddress(account);
+            setEnsName(name || null);
+          } catch {
+            setEnsName(null);
           }
-        } catch (error) {
-          console.error("Error checking existing connection:", error);
+        } catch (err) {
+          console.error("Auto-connect failed:", err);
         }
       }
     };
 
-    checkConnection();
+    initConnection();
   }, []);
 
-  // Listen for account changes
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      const handleAccountsChanged = async (accounts: string[]) => {
-        if (accounts.length === 0) {
-          disconnect();
-        } else if (accounts[0] !== address) {
-          setAddress(accounts[0]);
-          
-          if (provider) {
-            try {
-              const ensName = await provider.lookupAddress(accounts[0]);
-              setEnsName(ensName);
-            } catch (error) {
-              setEnsName(null);
-            }
+    const handleAccountsChanged = async (accounts: string[]) => {
+      if (accounts.length === 0) {
+        disconnect();
+      } else {
+        const newAddress = accounts[0];
+        setAddress(newAddress);
+
+        if (provider) {
+          try {
+            const name = await provider.lookupAddress(newAddress);
+            setEnsName(name || null);
+          } catch {
+            setEnsName(null);
           }
         }
-      };
+      }
+    };
 
-      const handleChainChanged = (chainIdHex: string) => {
-        setChainId(parseInt(chainIdHex, 16));
-      };
+    const handleChainChanged = (hexChainId: string) => {
+      setChainId(parseInt(hexChainId, 16));
+    };
 
+    if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', handleChainChanged);
-
-      return () => {
-        if (window.ethereum.removeListener) {
-          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-          window.ethereum.removeListener('chainChanged', handleChainChanged);
-        }
-      };
     }
-  }, [address, provider]);
+
+    return () => {
+      if (window.ethereum?.removeListener) {
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      }
+    };
+  }, [provider]);
 
   const connectWallet = async () => {
-    if (typeof window === 'undefined' || !window.ethereum) {
-      alert("Please install MetaMask or another Web3 wallet to connect");
+    if (!window.ethereum) {
+      alert("Please install MetaMask to use this feature.");
       return;
     }
-
+  
     try {
       const ethProvider = new ethers.BrowserProvider(window.ethereum);
       await ethProvider.send("eth_requestAccounts", []);
-      
-      const accounts = await ethProvider.listAccounts();
+      const signer = await ethProvider.getSigner();
+      const account = await signer.getAddress();
       const network = await ethProvider.getNetwork();
-      const account = accounts[0];
-      
+  
       setProvider(ethProvider);
-      setAddress(account.address);
+      setAddress(account);
       setChainId(Number(network.chainId));
       setIsConnected(true);
-      
+  
       try {
-        const ensName = await ethProvider.lookupAddress(account.address);
-        if (ensName) setEnsName(ensName);
-      } catch (error) {
+        const name = await ethProvider.lookupAddress(account);
+        setEnsName(name || null);
+      } catch {
         setEnsName(null);
       }
-    } catch (error) {
-      console.error("Error connecting wallet:", error);
+    } catch (err: any) {
+      if (err.code === 4001) {
+        console.warn("User rejected the wallet connection request.");
+        // Optional: display UI feedback here
+      } else {
+        console.error("Wallet connection error:", err);
+        alert("Failed to connect wallet. Check console for details.");
+      }
     }
   };
+  
 
   const disconnect = () => {
     setProvider(null);
@@ -150,7 +158,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
         isConnected,
         connectWallet,
         disconnect,
-        ensName
+        ensName,
       }}
     >
       {children}

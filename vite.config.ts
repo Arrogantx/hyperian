@@ -10,7 +10,12 @@ export default defineConfig({
   server: {
     headers: {
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws: wss: https://*.supabase.co https://*.supabase.net;",
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "img-src 'self' data: https:; " +
+        "connect-src 'self' http://localhost:5174 ws://localhost:5174 wss://localhost:5174 http: https: ws: wss: https://rpc.hyperliquid.xyz https://*.supabase.co https://*.supabase.net;",
     },
     proxy: {
       '/api/rpc-proxy': {

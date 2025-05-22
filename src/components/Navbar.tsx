@@ -10,7 +10,9 @@ import PixelButton from './ui/PixelButton';
 const Navbar: React.FC = () => {
   const { address, connectWallet, disconnect, isConnected } = useWeb3();
   const { isAdmin } = useAuth();
-  const { userPoints } = useStaking();
+  const { totalClaimedPoints } = useStaking();
+
+
   const navbarRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
@@ -62,7 +64,8 @@ const Navbar: React.FC = () => {
             <Store className="w-4 h-4" />
             <span>STORE</span>
             {isConnected && (
-              <span className="text-hyper-yellow">({userPoints} pts)</span>
+              <span className="text-hyper-yellow">({totalClaimedPoints} pts)</span>
+
             )}
           </Link>
           <a 

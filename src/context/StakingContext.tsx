@@ -2,36 +2,50 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useWeb3 } from './Web3Context';
 
-// Initialize Supabase
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL!,
   import.meta.env.VITE_SUPABASE_ANON_KEY!
 );
 
-// Contract constants
-const CONTRACT_ADDRESS = '0xB0F82655F249FC6561A94eB370d41bD24A861A9d';
+// Contract addresses
+const HYPERIANS_ADDRESS = '0x4414C32982b4CF348d4FDC7b86be2Ef9b1ae1160';
+const GENESIS_ADDRESS = '0xB0F82655F249FC6561A94eB370d41bD24A861A9d';
 
-interface Activity {
-  type: string;
-  points: number;
-  timestamp: number;
+interface UserNFT {
+  type: 'hyperian' | 'genesis';
+  tokenId: number;
 }
 
+type ActivityType = 'claim' | 'purchase' | 'trade';
+
+interface Activity {
+  type: ActivityType;
+  points: number;
+  timestamp: number;
+  tokenId?: number;
+  collection?: 'hyperian' | 'genesis';
+}
+
+
+
+
 interface StakingContextType {
-  userPoints: number;
-  totalPoints: number;
+  availablePoints: number;
+  totalClaimedPoints: number;
   weeklyPoints: number;
   nextRewardIn: number;
   activityMultiplier: number;
-  userNFTs: string[];
+  userNFTs: UserNFT[];
   recentActivity: Activity[];
   isLoading: boolean;
   error: string | null;
+  refreshPoints: () => Promise<void>;
 }
 
+
 const StakingContext = createContext<StakingContextType>({
-  userPoints: 0,
-  totalPoints: 0,
+  availablePoints: 0,
+  totalClaimedPoints: 0,
   weeklyPoints: 0,
   nextRewardIn: 0,
   activityMultiplier: 1,
@@ -39,31 +53,24 @@ const StakingContext = createContext<StakingContextType>({
   recentActivity: [],
   isLoading: false,
   error: null,
+  refreshPoints: async () => {},
 });
 
 export const useStaking = () => useContext(StakingContext);
 
-// Helper: balanceOf(address) = 0x70a08231 + padded address
 function encodeBalanceOf(address: string): string {
   return `0x70a08231${address.toLowerCase().replace('0x', '').padStart(64, '0')}`;
 }
 
-// ✅ Updated to use Netlify proxy
-async function attemptContractRead(address: string): Promise<bigint> {
+async function attemptContractRead(contract: string, address: string): Promise<bigint> {
   const payload = {
     jsonrpc: '2.0',
     method: 'eth_call',
-    params: [
-      {
-        to: CONTRACT_ADDRESS,
-        data: encodeBalanceOf(address),
-      },
-      'latest',
-    ],
+    params: [{ to: contract, data: encodeBalanceOf(address) }, 'latest'],
     id: 1,
   };
 
-  const res = await fetch('/.netlify/functions/rpc-proxy', {
+  const res = await fetch('/api/rpc-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -79,37 +86,62 @@ async function attemptContractRead(address: string): Promise<bigint> {
 
 export const StakingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { address, isConnected } = useWeb3();
-  const [userPoints, setUserPoints] = useState(0);
-  const [totalPoints, setTotalPoints] = useState(0);
+  const [availablePoints, setAvailablePoints] = useState(0);
+  const [totalClaimedPoints, setTotalClaimedPoints] = useState(0);
   const [weeklyPoints, setWeeklyPoints] = useState(0);
   const [nextRewardIn, setNextRewardIn] = useState(18000);
   const [activityMultiplier, setActivityMultiplier] = useState(1);
-  const [userNFTs, setUserNFTs] = useState<string[]>([]);
+  const [userNFTs, setUserNFTs] = useState<UserNFT[]>([]);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    console.log('✅ totalClaimedPoints updated:', totalClaimedPoints);
+  }, [totalClaimedPoints]);
+
   const loadUserData = async () => {
-    if (!address || !isConnected) {
-      setIsLoading(false);
-      return;
-    }
+    if (!address || !isConnected) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const balance = await attemptContractRead(address);
-      const nftIds = Array.from({ length: Number(balance) }, (_, i) => String(i + 1));
-      setUserNFTs(nftIds);
+      const [hyperianBalance, genesisBalance] = await Promise.all([
+        attemptContractRead(HYPERIANS_ADDRESS, address),
+        attemptContractRead(GENESIS_ADDRESS, address),
+      ]);
+
+      const hyperiansHeld = Number(hyperianBalance);
+      const genesisHeld = Number(genesisBalance);
+      const totalHeld = hyperiansHeld + genesisHeld;
+
+      const tierMultiplier =
+        totalHeld >= 25 ? 3 :
+        totalHeld >= 10 ? 2 :
+        totalHeld >= 5 ? 1.5 : 1;
+
+        const hyperianNFTs = Array.from({ length: hyperiansHeld }, (_, i) => ({
+          type: 'hyperian' as const,
+          tokenId: i + 1,
+        }));
+        
+        const genesisNFTs = Array.from({ length: genesisHeld }, (_, i) => ({
+          type: 'genesis' as const,
+          tokenId: i + 1,
+        }));
+        
+        setUserNFTs([...hyperianNFTs, ...genesisNFTs]);
+        
+        
+      setActivityMultiplier(tierMultiplier);
 
       const { data: userData, error: dbError } = await supabase
         .from('user_points')
         .select('*')
         .eq('address', address.toLowerCase())
-        .maybeSingle();
-
-      if (dbError) throw dbError;
+        .maybeSingle()
+        .throwOnError();
 
       if (!userData) {
         const { error: insertError } = await supabase
@@ -119,26 +151,31 @@ export const StakingProvider: React.FC<{ children: React.ReactNode }> = ({ child
               address: address.toLowerCase(),
               points: 0,
               weekly_points: 0,
-              total_nfts_held: Number(balance),
-              activity_multiplier: 1,
+              total_claimed: 0,
+              total_nfts_held: totalHeld,
+              activity_multiplier: tierMultiplier,
             },
           ]);
-
         if (insertError) throw insertError;
-
-        setUserPoints(0);
-        setWeeklyPoints(0);
-        setTotalPoints(0);
-      } else {
-        setUserPoints(userData.points || 0);
-        setWeeklyPoints(userData.weekly_points || 0);
-        setTotalPoints(userData.total_claimed || 0);
-        setActivityMultiplier(userData.activity_multiplier || 1);
-
-        const lastActivity = new Date(userData.last_activity);
-        const timeSince = Math.floor((Date.now() - lastActivity.getTime()) / 1000);
-        setNextRewardIn(Math.max(0, 18000 - timeSince));
       }
+
+      setAvailablePoints(parseInt(userData?.points || '0', 10));
+      setWeeklyPoints(parseInt(userData?.weekly_points || '0', 10));
+      setTotalClaimedPoints(
+        typeof userData.total_claimed === 'number'
+          ? userData.total_claimed
+          : parseFloat(userData.total_claimed || '0')
+      );
+
+      const lastClaim = new Date(userData?.last_claim || userData?.last_activity || Date.now());
+const cooldownPeriod = 5 * 60 * 60 * 1000; // 5 hours
+
+const nextClaimTimestamp = lastClaim.getTime() + cooldownPeriod;
+const secondsRemaining = Math.max(0, Math.floor((nextClaimTimestamp - Date.now()) / 1000));
+
+setNextRewardIn(secondsRemaining);
+
+
 
       const { data: activityData } = await supabase
         .from('user_activity')
@@ -149,20 +186,20 @@ export const StakingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (activityData) {
         setRecentActivity(
-          activityData.map((activity) => ({
-            type: activity.activity_type,
-            points: activity.points_earned,
-            timestamp: new Date(activity.created_at).getTime(),
+          activityData.map((a) => ({
+            type: a.activity_type,
+            points: a.points_earned,
+            timestamp: new Date(a.created_at).getTime(),
           }))
         );
       }
     } catch (err) {
       console.error('Error loading user data:', err);
-      setError('Unable to connect to RPC. Please try again.');
+      setError('Unable to load user data. Please try again.');
       setUserNFTs([]);
-      setUserPoints(0);
+      setAvailablePoints(0);
       setWeeklyPoints(0);
-      setTotalPoints(0);
+      setTotalClaimedPoints(0);
       setActivityMultiplier(1);
       setRecentActivity([]);
     } finally {
@@ -170,15 +207,28 @@ export const StakingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const refreshPoints = async () => {
+    await loadUserData();
+  };
+
   useEffect(() => {
     loadUserData();
   }, [address, isConnected]);
 
+  useEffect(() => {
+    if (nextRewardIn > 0) {
+      const timer = setInterval(() => {
+        setNextRewardIn((prev) => Math.max(0, prev - 1));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [nextRewardIn]);
+
   return (
     <StakingContext.Provider
       value={{
-        userPoints,
-        totalPoints,
+        availablePoints,
+        totalClaimedPoints,
         weeklyPoints,
         nextRewardIn,
         activityMultiplier,
@@ -186,6 +236,7 @@ export const StakingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         recentActivity,
         isLoading,
         error,
+        refreshPoints,
       }}
     >
       {children}
